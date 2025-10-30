@@ -1,14 +1,16 @@
 import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import { useState } from 'react';
 import {
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
+import { saveUser } from '../../utils/storage';
 
 export default function RegistrationScreen() {
   const [userType, setUserType] = useState('normal'); // 'normal' or 'doctor'
@@ -19,9 +21,31 @@ export default function RegistrationScreen() {
     field: '',
   });
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     console.log('Form submitted:', { userType, ...formData });
-    // Here you would handle the actual registration logic
+
+    // Prepare user data
+    const userData = {
+      id: Date.now().toString(),
+      type: userType,
+      username: formData.username,
+      password: formData.password,
+      ...(userType === 'doctor' && {
+        university: formData.university,
+        field: formData.field,
+      }),
+      createdAt: new Date().toISOString(),
+    };
+
+    // Save user data locally
+    await saveUser(userData);
+
+    // Redirect based on user type
+    if (userType === 'normal') {
+      router.replace('/(tabs_person)/home');
+    } else {
+      router.replace('/(tabs_doctor)/dashboard');
+    }
   };
 
   const handleGoogleSignIn = () => {
