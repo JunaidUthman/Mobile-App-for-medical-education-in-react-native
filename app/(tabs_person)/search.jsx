@@ -1,13 +1,15 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useEffect, useState } from 'react';
 import {
   FlatList,
+  Image,
   SafeAreaView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
 
 // HARDCODED DOCTORS DATA
@@ -67,12 +69,29 @@ const HARDCODED_DOCTORS = [
 export default function SearchScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [doctors] = useState(HARDCODED_DOCTORS);
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    const loadUser = async () => {
+      const userData = await AsyncStorage.getItem('user');
+      if (userData) {
+        setUser(JSON.parse(userData));
+      }
+    };
+    loadUser();
+  }, []);
 
   const filteredDoctors = doctors.filter(doctor =>
     doctor.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     doctor.specialty.toLowerCase().includes(searchQuery.toLowerCase()) ||
     doctor.location.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const handleSeeMore = (doctor) => {
+    // Navigate to doctor details page with doctor data
+    console.log('Doctor selected:', doctor);
+    // Navigation will be implemented when routing is properly configured
+  };
 
   const renderDoctorCard = ({ item }) => (
     <TouchableOpacity style={styles.doctorCard}>
@@ -97,7 +116,16 @@ export default function SearchScreen() {
           <Text style={styles.ratingText}>{item.rating}</Text>
           <Text style={styles.reviewsText}>({item.reviews})</Text>
         </View>
-        <Text style={styles.experienceText}>{item.experience} خبرة</Text>
+        <View style={styles.doctorActions}>
+          <TouchableOpacity
+            style={styles.seeMoreButton}
+            onPress={() => handleSeeMore(item)}
+          >
+            <Text style={styles.seeMoreText}>عرض المزيد</Text>
+            <Ionicons name="chevron-forward" size={14} color="#14b8a6" />
+          </TouchableOpacity>
+          <Text style={styles.experienceText}>{item.experience} خبرة</Text>
+        </View>
       </View>
     </TouchableOpacity>
   );
@@ -107,12 +135,19 @@ export default function SearchScreen() {
       {/* HEADER */}
       <View style={styles.header}>
         <View style={styles.logoContainer}>
-          <Ionicons name="school" size={28} color="#14b8a6" />
-          <Text style={styles.logoText}>التربية الصحية</Text>
+          <Image
+            source={require('../../assets/images/logo.png')}
+            style={styles.logoImage}
+            resizeMode="contain"
+          />
+          <Text style={styles.logoText}>بيني وبينك</Text>
         </View>
-        <TouchableOpacity style={styles.profileButton}>
-          <Ionicons name="person-circle" size={36} color="#14b8a6" />
-        </TouchableOpacity>
+        <View style={styles.userInfo}>
+          <Text style={styles.username}>{user?.username || 'المستخدم'}</Text>
+          <TouchableOpacity style={styles.profileButton}>
+            <Ionicons name="person-circle" size={28} color="#14b8a6" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* SEARCH BAR */}
@@ -156,9 +191,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    paddingTop: 50,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#e5e7eb',
@@ -166,12 +200,27 @@ const styles = StyleSheet.create({
   logoContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 4,
+  },
+  logoImage: {
+    width: 24,
+    height: 24,
   },
   logoText: {
-    fontSize: 18,
+    fontSize: 14,
     fontWeight: 'bold',
     color: '#1f2937',
+  },
+  userInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  username: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+    textAlign: 'right',
   },
   profileButton: {
     padding: 4,
@@ -268,6 +317,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+  },
+  doctorActions: {
+    alignItems: 'flex-end',
+    gap: 4,
+  },
+  seeMoreButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+  },
+  seeMoreText: {
+    fontSize: 12,
+    color: '#14b8a6',
+    fontWeight: '600',
   },
   ratingContainer: {
     flexDirection: 'row',

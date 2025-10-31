@@ -1,8 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
   Alert,
+  Image,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -11,7 +13,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { getUser, removeUser, saveUser } from '../../utils/storage';
+import { removeUser, saveUser } from '../../utils/storage';
 
 export default function SettingsScreen() {
   const [user, setUser] = useState(null);
@@ -22,13 +24,23 @@ export default function SettingsScreen() {
 
   useEffect(() => {
     const loadUser = async () => {
-      const userData = await getUser();
-      setUser(userData);
-      if (userData) {
-        setFormData({
-          username: userData.username || '',
-          password: userData.password || '',
-        });
+      try {
+        // Get user from AsyncStorage directly
+        const userData = await AsyncStorage.getItem('user');
+        if (userData) {
+          const parsedUser = JSON.parse(userData);
+          setUser(parsedUser);
+          setFormData({
+            username: parsedUser.username || '',
+            password: parsedUser.password || '',
+          });
+        } else {
+          // If no user data, set user to empty object to stop loading
+          setUser({});
+        }
+      } catch (error) {
+        console.error('Error loading user:', error);
+        setUser({});
       }
     };
     loadUser();
@@ -51,25 +63,19 @@ export default function SettingsScreen() {
     Alert.alert('تم بنجاح', 'تم حفظ التغييرات');
   };
 
-  const handleLogout = () => {
-    Alert.alert(
-      'تأكيد الخروج',
-      'هل أنت متأكد من رغبتك في تسجيل الخروج؟',
-      [
-        { text: 'إلغاء', style: 'cancel' },
-        {
-          text: 'خروج',
-          style: 'destructive',
-          onPress: async () => {
-            await removeUser();
-            router.replace('/(auth)/register');
-          },
-        },
-      ]
-    );
+  const handleLogout = async () => {
+    try {
+      await AsyncStorage.removeItem('user');
+      await removeUser();
+      router.replace('/(auth)/login');
+    } catch (error) {
+      console.error('Error during logout:', error);
+      // Still redirect even if there's an error
+      router.replace('/(auth)/login');
+    }
   };
 
-  if (!user) {
+  if (user === null) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
@@ -84,12 +90,19 @@ export default function SettingsScreen() {
       {/* HEADER */}
       <View style={styles.header}>
         <View style={styles.logoContainer}>
-          <Ionicons name="school" size={28} color="#14b8a6" />
-          <Text style={styles.logoText}>التربية الصحية</Text>
+          <Image
+            source={require('../../assets/images/logo.png')}
+            style={styles.logoImage}
+            resizeMode="contain"
+          />
+          <Text style={styles.logoText}>بيني وبينك</Text>
         </View>
-        <TouchableOpacity style={styles.profileButton}>
-          <Ionicons name="person-circle" size={36} color="#14b8a6" />
-        </TouchableOpacity>
+        <View style={styles.userInfo}>
+          <Text style={styles.username}>{user?.username || 'المستخدم'}</Text>
+          <TouchableOpacity style={styles.profileButton}>
+            <Ionicons name="person-circle" size={28} color="#14b8a6" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
@@ -200,9 +213,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    paddingTop: 50,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#e5e7eb',
@@ -210,12 +222,27 @@ const styles = StyleSheet.create({
   logoContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 4,
+  },
+  logoImage: {
+    width: 24,
+    height: 24,
   },
   logoText: {
-    fontSize: 18,
+    fontSize: 14,
     fontWeight: 'bold',
     color: '#1f2937',
+  },
+  userInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  username: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+    textAlign: 'right',
   },
   profileButton: {
     padding: 4,

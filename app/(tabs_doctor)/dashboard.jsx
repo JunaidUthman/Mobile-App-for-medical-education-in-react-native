@@ -8,7 +8,7 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
-import { getConsultations, getPosts, getUser } from '../../utils/storage';
+import { getConsultations, getPosts } from '../../utils/storage';
 
 export default function DoctorDashboardScreen() {
   const [user, setUser] = useState(null);
@@ -16,22 +16,24 @@ export default function DoctorDashboardScreen() {
     consultations: 0,
     posts: 0,
     rating: 4.8,
+    timeSpent: 8, // months
+    videos: 7,
+    articles: 12,
+    reactions: 118,
   });
 
   useEffect(() => {
     const loadData = async () => {
-      const userData = await getUser();
-      setUser(userData);
-
       // Load stats
       const consultations = await getConsultations();
       const posts = await getPosts();
 
-      setStats({
+      setStats(prevStats => ({
+        ...prevStats,
         consultations: consultations.length,
         posts: posts.length,
         rating: 4.8, // hardcoded for now
-      });
+      }));
     };
     loadData();
   }, []);
@@ -48,97 +50,121 @@ export default function DoctorDashboardScreen() {
     </View>
   );
 
+  const handleLogout = async () => {
+    try {
+      await removeUser();
+      router.replace('/(auth)/login');
+    } catch (error) {
+      console.error('Error during logout:', error);
+      // Still redirect even if there's an error
+      router.replace('/(auth)/login');
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       {/* HEADER */}
       <View style={styles.header}>
         <View style={styles.logoContainer}>
-          <Ionicons name="school" size={28} color="#14b8a6" />
-          <Text style={styles.logoText}>التربية الصحية</Text>
+          <View style={styles.logoImage}>
+            <Ionicons name="school" size={24} color="#14b8a6" />
+          </View>
+          <Text style={styles.logoText}>بيني وبينك</Text>
         </View>
-        <TouchableOpacity
-          style={styles.profileButton}
-          onPress={() => {
-            Alert.alert(
-              'تأكيد الخروج',
-              'هل أنت متأكد من رغبتك في تسجيل الخروج؟',
-              [
-                { text: 'إلغاء', style: 'cancel' },
-                {
-                  text: 'خروج',
-                  style: 'destructive',
-                  onPress: async () => {
-                    await removeUser();
-                    router.replace('/(auth)/register');
-                  },
-                },
-              ]
-            );
-          }}
-        >
-          <Ionicons name="log-out-outline" size={28} color="#ef4444" />
-        </TouchableOpacity>
+        <View style={styles.userInfo}>
+          <Text style={styles.username}>{user?.username || 'الطبيب'}</Text>
+          <TouchableOpacity style={styles.profileButton} onPress={handleLogout}>
+            <Ionicons name="person-circle" size={28} color="#14b8a6" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* WELCOME SECTION */}
-        <View style={styles.welcomeSection}>
-          <Text style={styles.welcomeTitle}>
-            مرحباً د. {user?.username || 'الطبيب'}
-          </Text>
-          <Text style={styles.welcomeSubtitle}>
-            إليك نظرة عامة على نشاطك في التطبيق
-          </Text>
-        </View>
+        {/* STATS OVERVIEW */}
+        <View style={styles.statsOverview}>
+          <View style={styles.statsRow}>
+            <View style={styles.statItem}>
+              <View style={[styles.statIconBg, { backgroundColor: '#fef3c7' }]}>
+                <Ionicons name="star" size={24} color="#f59e0b" />
+              </View>
+              <Text style={styles.statNumber}>{stats.rating}</Text>
+              <Text style={styles.statLabel}>التقييم</Text>
+            </View>
 
-        {/* STATS CARDS */}
-        <View style={styles.statsSection}>
-          <StatCard
-            title="الاستشارات"
-            value={stats.consultations}
-            icon="chatbubbles"
-            color="#14b8a6"
-          />
-          <StatCard
-            title="المنشورات"
-            value={stats.posts}
-            icon="document-text"
-            color="#f59e0b"
-          />
-          <StatCard
-            title="متوسط التقييم"
-            value={stats.rating}
-            icon="star"
-            color="#ef4444"
-          />
-        </View>
+            <View style={styles.statItem}>
+              <View style={[styles.statIconBg, { backgroundColor: '#dbeafe' }]}>
+                <Ionicons name="videocam" size={24} color="#3b82f6" />
+              </View>
+              <Text style={styles.statNumber}>{stats.consultations}</Text>
+              <Text style={styles.statLabel}>الاستشارات</Text>
+            </View>
 
-        {/* QUICK ACTIONS */}
-        <View style={styles.actionsSection}>
-          <Text style={styles.sectionTitle}>الإجراءات السريعة</Text>
-
-          <View style={styles.actionsGrid}>
-            <TouchableOpacity style={styles.actionCard}>
-              <Ionicons name="add-circle" size={32} color="#14b8a6" />
-              <Text style={styles.actionText}>إضافة منشور</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.actionCard}>
-              <Ionicons name="calendar" size={32} color="#f59e0b" />
-              <Text style={styles.actionText}>جدولة موعد</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.actionCard}>
-              <Ionicons name="chatbubbles" size={32} color="#8b5cf6" />
-              <Text style={styles.actionText}>الاستشارات</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.actionCard}>
-              <Ionicons name="stats-chart" size={32} color="#ef4444" />
-              <Text style={styles.actionText}>الإحصائيات</Text>
-            </TouchableOpacity>
+            <View style={styles.statItem}>
+              <View style={[styles.statIconBg, { backgroundColor: '#ecfdf5' }]}>
+                <Ionicons name="time" size={24} color="#10b981" />
+              </View>
+              <Text style={styles.statNumber}>{stats.timeSpent}</Text>
+              <Text style={styles.statLabel}>أشهر</Text>
+            </View>
           </View>
         </View>
+
+        {/* DOCTOR PROFILE */}
+        <View style={styles.profileSection}>
+          <View style={styles.profileCard}>
+            <View style={styles.doctorImage}>
+              <Ionicons name="person-circle" size={80} color="#14b8a6" />
+            </View>
+            <View style={styles.profileInfo}>
+              <Text style={styles.doctorName}>د. {user?.username || 'أحمد محمد'}</Text>
+              <Text style={styles.doctorSpecialty}>طبيب نفسي متخصص في الصحة النفسية للأطفال والمراهقين</Text>
+              <Text style={styles.doctorBio}>
+                أعمل على مساعدة الأسر في فهم احتياجات أطفالهم النفسية وتقديم الدعم اللازم لهم في رحلتهم التعليمية والنفسية.
+              </Text>
+              <View style={styles.doctorStats}>
+                <View style={styles.doctorStat}>
+                  <Ionicons name="school" size={16} color="#14b8a6" />
+                  <Text style={styles.doctorStatText}>خبرة 8 سنوات</Text>
+                </View>
+                <View style={styles.doctorStat}>
+                  <Ionicons name="location" size={16} color="#14b8a6" />
+                  <Text style={styles.doctorStatText}>الرباط، المغرب</Text>
+                </View>
+              </View>
+            </View>
+          </View>
+        </View>
+
+        {/* CONTENT STATS */}
+        <View style={styles.contentStatsSection}>
+          <Text style={styles.sectionTitle}>إحصائيات المحتوى</Text>
+          <View style={styles.contentStatsGrid}>
+            <View style={styles.contentStatCard}>
+              <View style={[styles.contentStatIcon, { backgroundColor: '#fef3c7' }]}>
+                <Ionicons name="videocam" size={20} color="#f59e0b" />
+              </View>
+              <Text style={styles.contentStatNumber}>{stats.videos}</Text>
+              <Text style={styles.contentStatLabel}>فيديو</Text>
+            </View>
+
+            <View style={styles.contentStatCard}>
+              <View style={[styles.contentStatIcon, { backgroundColor: '#dbeafe' }]}>
+                <Ionicons name="document-text" size={20} color="#3b82f6" />
+              </View>
+              <Text style={styles.contentStatNumber}>{stats.articles}</Text>
+              <Text style={styles.contentStatLabel}>مقالة</Text>
+            </View>
+
+            <View style={styles.contentStatCard}>
+              <View style={[styles.contentStatIcon, { backgroundColor: '#ecfdf5' }]}>
+                <Ionicons name="heart" size={20} color="#10b981" />
+              </View>
+              <Text style={styles.contentStatNumber}>{stats.reactions}</Text>
+              <Text style={styles.contentStatLabel}>تفاعل</Text>
+            </View>
+          </View>
+        </View>
+
 
         {/* RECENT ACTIVITY */}
         <View style={styles.activitySection}>
@@ -162,13 +188,13 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f9fafb',
   },
+  // HEADER STYLES (matching user space)
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    paddingTop: 50,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#e5e7eb',
@@ -176,12 +202,27 @@ const styles = StyleSheet.create({
   logoContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 4,
+  },
+  logoImage: {
+    width: 24,
+    height: 24,
   },
   logoText: {
-    fontSize: 18,
+    fontSize: 14,
     fontWeight: 'bold',
     color: '#1f2937',
+  },
+  userInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  username: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+    textAlign: 'right',
   },
   profileButton: {
     padding: 4,
@@ -190,25 +231,141 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 16,
   },
-  welcomeSection: {
-    paddingVertical: 24,
+  statsOverview: {
+    backgroundColor: '#14b8a6',
+    borderRadius: 16,
+    padding: 20,
+    marginVertical: 16,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+  },
+  statItem: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  statIconBg: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  statNumber: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#fff',
+    marginBottom: 4,
+  },
+  statLabel: {
+    fontSize: 12,
+    color: '#e6f7f4',
+    fontWeight: '600',
+  },
+  profileSection: {
+    marginBottom: 24,
+  },
+  profileCard: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  doctorImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    marginLeft: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f3f4f6',
+  },
+  profileInfo: {
+    flex: 1,
     alignItems: 'flex-end',
   },
-  welcomeTitle: {
-    fontSize: 24,
+  doctorName: {
+    fontSize: 20,
     fontWeight: 'bold',
     color: '#1f2937',
     textAlign: 'right',
-    marginBottom: 8,
+    marginBottom: 4,
   },
-  welcomeSubtitle: {
-    fontSize: 16,
+  doctorSpecialty: {
+    fontSize: 14,
     color: '#6b7280',
     textAlign: 'right',
+    marginBottom: 8,
+    lineHeight: 20,
   },
-  statsSection: {
+  doctorBio: {
+    fontSize: 13,
+    color: '#374151',
+    textAlign: 'right',
+    lineHeight: 18,
+    marginBottom: 12,
+  },
+  doctorStats: {
+    flexDirection: 'row',
     gap: 16,
+  },
+  doctorStat: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  doctorStatText: {
+    fontSize: 12,
+    color: '#14b8a6',
+    fontWeight: '600',
+  },
+  contentStatsSection: {
     marginBottom: 32,
+  },
+  contentStatsGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  contentStatCard: {
+    flex: 1,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  contentStatIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  contentStatNumber: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#1f2937',
+    marginBottom: 4,
+  },
+  contentStatLabel: {
+    fontSize: 12,
+    color: '#6b7280',
+    fontWeight: '600',
   },
   statCard: {
     backgroundColor: '#fff',

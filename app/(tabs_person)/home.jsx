@@ -1,16 +1,19 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useEffect, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useEffect, useRef, useState } from 'react';
 import {
+  Alert,
   Dimensions,
+  FlatList,
   Image,
   SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
-import { getPosts, getUser } from '../../utils/storage';
+import { getPosts } from '../../utils/storage';
 
 const { width } = Dimensions.get('window');
 
@@ -23,8 +26,8 @@ const HARDCODED_POSTS = [
     doctorAvatar: 'https://i.pravatar.cc/150?img=1',
     timeAgo: 'منذ ساعتين',
     description: 'كيفاش تكلم مع ولادك على التغيرات الجسدية في مرحلة المراهقة. من المهم نبدأو الحوار بشكل مبكر باش نخليو الأطفال يحسو بالراحة.',
-    mediaUrl: 'https://picsum.photos/400/300?random=1',
-    mediaType: 'image',
+    mediaUrl: require('../../assets/images/doctor thubnail.png'),
+    mediaType: 'video',
     likes: 234,
     comments: 45,
     shares: 12,
@@ -37,8 +40,8 @@ const HARDCODED_POSTS = [
     doctorAvatar: 'https://i.pravatar.cc/150?img=33',
     timeAgo: 'منذ 5 ساعات',
     description: 'نصائح مهمة: الاستماع الفعال هو المفتاح. خلي ولادك يحسو أنك متاح ديما باش يسولوك أي سؤال بدون خوف.',
-    mediaUrl: 'https://picsum.photos/400/300?random=2',
-    mediaType: 'image',
+    mediaUrl: require('../../assets/images/woman thubnail.jpg'),
+    mediaType: 'video',
     likes: 189,
     comments: 28,
     shares: 8,
@@ -51,7 +54,7 @@ const HARDCODED_POSTS = [
     doctorAvatar: 'https://i.pravatar.cc/150?img=5',
     timeAgo: 'منذ يوم',
     description: 'التوعية الجنسية مامشي غير على الجنس، بل على احترام الجسد، الحدود الشخصية، والعلاقات الصحية.',
-    mediaUrl: 'https://picsum.photos/400/300?random=3',
+    mediaUrl: require('../../assets/images/parent kids.jpg'),
     mediaType: 'image',
     likes: 456,
     comments: 67,
@@ -60,14 +63,41 @@ const HARDCODED_POSTS = [
   },
 ];
 
+// Carousel data
+const carouselData = [
+  {
+    id: 1,
+    image: require('../../assets/images/parents and children.png'),
+    title: 'مساحة آمنة للتعلم',
+    subtitle: 'معلومات موثوقة من أطباء متخصصين',
+  },
+  {
+    id: 2,
+    image: require('../../assets/images/video call.png'),
+    title: 'تعليم الأطفال',
+    subtitle: 'كيفية التعامل مع التغيرات الجسدية',
+  },
+  {
+    id: 3,
+    image: require('../../assets/images/docter_content.webp'),
+    title: 'دعم نفسي',
+    subtitle: 'استشارات مع متخصصين في الصحة النفسية',
+  },
+];
+
 export default function PersonHomeScreen() {
   const [posts, setPosts] = useState(HARDCODED_POSTS);
   const [user, setUser] = useState(null);
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const flatListRef = useRef(null);
 
   useEffect(() => {
     const loadData = async () => {
-      const userData = await getUser();
-      setUser(userData);
+      // Get user from AsyncStorage directly
+      const userData = await AsyncStorage.getItem('user');
+      if (userData) {
+        setUser(JSON.parse(userData));
+      }
 
       // Load posts from storage, fallback to hardcoded
       const storedPosts = await getPosts();
@@ -78,6 +108,22 @@ export default function PersonHomeScreen() {
     loadData();
   }, []);
 
+  // Auto-scroll carousel
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentSlide((prev) => {
+        const next = (prev + 1) % carouselData.length;
+        flatListRef.current?.scrollToOffset({
+          offset: next * width,
+          animated: true,
+        });
+        return next;
+      });
+    }, 3000); // Change slide every 3 seconds
+
+    return () => clearInterval(interval);
+  }, []);
+
   const handleLike = (postId) => {
     setPosts(posts.map(post =>
       post.id === postId
@@ -86,17 +132,43 @@ export default function PersonHomeScreen() {
     ));
   };
 
+  const handleVideoPress = (post) => {
+    // For now, just show an alert with the video URL
+    // In a real app, this would open a video player or YouTube
+    Alert.alert(
+      'تشغيل الفيديو',
+      `سيتم تشغيل فيديو: ${post.description.substring(0, 50)}...`,
+      [
+        { text: 'إلغاء', style: 'cancel' },
+        {
+          text: 'شاهد الآن',
+          onPress: () => {
+            // Here you would integrate with a video player or open YouTube
+            console.log('Opening video:', post.mediaUrl);
+          }
+        },
+      ]
+    );
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       {/* HEADER */}
       <View style={styles.header}>
         <View style={styles.logoContainer}>
-          <Ionicons name="school" size={28} color="#14b8a6" />
-          <Text style={styles.logoText}>التربية الصحية</Text>
+          <Image
+            source={require('../../assets/images/logo.png')}
+            style={styles.logoImage}
+            resizeMode="contain"
+          />
+          <Text style={styles.logoText}>بيني وبينك</Text>
         </View>
-        <TouchableOpacity style={styles.profileButton}>
-          <Ionicons name="person-circle" size={36} color="#14b8a6" />
-        </TouchableOpacity>
+        <View style={styles.userInfo}>
+          <Text style={styles.username}>{user?.username || 'المستخدم'}</Text>
+          <TouchableOpacity style={styles.profileButton}>
+            <Ionicons name="person-circle" size={28} color="#14b8a6" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* CONTENT */}
@@ -104,16 +176,52 @@ export default function PersonHomeScreen() {
         style={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        {/* FEATURE IMAGE BANNER */}
-        <View style={styles.bannerContainer}>
-          <Image
-            source={{ uri: 'https://picsum.photos/800/400?random=banner' }}
-            style={styles.bannerImage}
-            resizeMode="cover"
+        {/* CAROUSEL BANNER */}
+        <View style={styles.carouselContainer}>
+          <FlatList
+            ref={flatListRef}
+            data={carouselData}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            keyExtractor={(item) => item.id.toString()}
+            renderItem={({ item }) => (
+              <View style={styles.carouselItem}>
+                <Image
+                  source={item.image}
+                  style={styles.carouselImage}
+                  resizeMode="cover"
+                />
+                <View style={styles.carouselOverlay}>
+                  <Text style={styles.carouselTitle}>{item.title}</Text>
+                  <Text style={styles.carouselSubtitle}>{item.subtitle}</Text>
+                </View>
+              </View>
+            )}
+            onMomentumScrollEnd={(event) => {
+              const slideIndex = Math.round(event.nativeEvent.contentOffset.x / width);
+              setCurrentSlide(slideIndex);
+            }}
+            onScrollToIndexFailed={(info) => {
+              console.warn('Scroll to index failed:', info);
+            }}
+            getItemLayout={(data, index) => ({
+              length: width,
+              offset: width * index,
+              index,
+            })}
           />
-          <View style={styles.bannerOverlay}>
-            <Text style={styles.bannerTitle}>مساحة آمنة للتعلم</Text>
-            <Text style={styles.bannerSubtitle}>معلومات موثوقة من أطباء متخصصين</Text>
+          {/* Carousel Indicators */}
+          <View style={styles.indicators}>
+            {carouselData.map((_, index) => (
+              <View
+                key={index}
+                style={[
+                  styles.indicator,
+                  index === currentSlide && styles.indicatorActive,
+                ]}
+              />
+            ))}
           </View>
         </View>
 
@@ -126,6 +234,7 @@ export default function PersonHomeScreen() {
               key={post.id}
               post={post}
               onLike={() => handleLike(post.id)}
+              onVideoPress={handleVideoPress}
             />
           ))}
         </View>
@@ -136,7 +245,7 @@ export default function PersonHomeScreen() {
 }
 
 // POST CARD COMPONENT (Best Practice: Separate component)
-function PostCard({ post, onLike }) {
+function PostCard({ post, onLike, onVideoPress }) {
   return (
     <View style={styles.postCard}>
       {/* Doctor Info */}
@@ -159,11 +268,21 @@ function PostCard({ post, onLike }) {
 
       {/* Media (Image/Video) */}
       {post.mediaUrl && (
-        <Image
-          source={{ uri: post.mediaUrl }}
-          style={styles.postMedia}
-          resizeMode="cover"
-        />
+        <TouchableOpacity
+          style={styles.mediaContainer}
+          onPress={() => post.mediaType === 'video' && onVideoPress(post)}
+        >
+          <Image
+            source={post.mediaUrl}
+            style={styles.postMedia}
+            resizeMode="cover"
+          />
+          {post.mediaType === 'video' && (
+            <View style={styles.playIconContainer}>
+              <Ionicons name="play-circle" size={48} color="#fff" />
+            </View>
+          )}
+        </TouchableOpacity>
       )}
 
       {/* Reactions Section */}
@@ -210,9 +329,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    paddingTop: 50,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#e5e7eb',
@@ -220,12 +338,27 @@ const styles = StyleSheet.create({
   logoContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 4,
+  },
+  logoImage: {
+    width: 24,
+    height: 24,
   },
   logoText: {
-    fontSize: 18,
+    fontSize: 14,
     fontWeight: 'bold',
     color: '#1f2937',
+  },
+  userInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  username: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+    textAlign: 'right',
   },
   profileButton: {
     padding: 4,
@@ -234,18 +367,23 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
   },
-  // BANNER STYLES
-  bannerContainer: {
+  // CAROUSEL STYLES
+  carouselContainer: {
     width: '100%',
     height: 200,
     position: 'relative',
     marginBottom: 16,
   },
-  bannerImage: {
+  carouselItem: {
+    width: width,
+    height: 200,
+    position: 'relative',
+  },
+  carouselImage: {
     width: '100%',
     height: '100%',
   },
-  bannerOverlay: {
+  carouselOverlay: {
     position: 'absolute',
     bottom: 0,
     left: 0,
@@ -253,17 +391,35 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.5)',
     padding: 16,
   },
-  bannerTitle: {
-    fontSize: 22,
+  carouselTitle: {
+    fontSize: 20,
     fontWeight: 'bold',
     color: '#fff',
     textAlign: 'right',
     marginBottom: 4,
   },
-  bannerSubtitle: {
+  carouselSubtitle: {
     fontSize: 14,
     color: '#e5e7eb',
     textAlign: 'right',
+  },
+  indicators: {
+    position: 'absolute',
+    bottom: 8,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  indicator: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: 'rgba(255,255,255,0.5)',
+  },
+  indicatorActive: {
+    backgroundColor: '#fff',
   },
   // POSTS SECTION
   postsSection: {
@@ -331,12 +487,24 @@ const styles = StyleSheet.create({
     textAlign: 'right',
     marginBottom: 12,
   },
+  mediaContainer: {
+    position: 'relative',
+    marginBottom: 12,
+  },
   postMedia: {
     width: '100%',
     height: 240,
     borderRadius: 12,
     backgroundColor: '#e5e7eb',
-    marginBottom: 12,
+  },
+  playIconContainer: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    transform: [{ translateX: -24 }, { translateY: -24 }],
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: 24,
+    padding: 8,
   },
   reactionsContainer: {
     flexDirection: 'row',

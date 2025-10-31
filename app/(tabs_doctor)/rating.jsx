@@ -1,13 +1,17 @@
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
-  FlatList,
+  Alert,
   SafeAreaView,
+  ScrollView,
   StyleSheet,
   Text,
-  View,
+  TouchableOpacity,
+  View
 } from 'react-native';
-import { getUser } from '../../utils/storage';
+import { removeUser } from '../../utils/storage';
 
 // HARDCODED DOCTORS DATA WITH RATINGS
 const HARDCODED_DOCTORS = [
@@ -63,96 +67,62 @@ const HARDCODED_DOCTORS = [
   },
 ];
 
-export default function RatingScreen() {
-  const [doctors, setDoctors] = useState(HARDCODED_DOCTORS);
-  const [currentUser, setCurrentUser] = useState(null);
+export default function DoctorSettingsScreen() {
+  const [user, setUser] = useState(null);
 
   useEffect(() => {
     const loadUser = async () => {
-      const user = await getUser();
-      setCurrentUser(user);
-
-      // Mark current user in the list
-      if (user && user.type === 'doctor') {
-        setDoctors(prev => prev.map(doctor => ({
-          ...doctor,
-          isCurrentUser: doctor.name.includes(user.username) || false, // Simple match for demo
-        })));
+      const userData = await AsyncStorage.getItem('user');
+      if (userData) {
+        setUser(JSON.parse(userData));
       }
     };
     loadUser();
   }, []);
 
-  const renderStars = (rating) => {
-    const stars = [];
-    const fullStars = Math.floor(rating);
-    const hasHalfStar = rating % 1 !== 0;
-
-    for (let i = 0; i < fullStars; i++) {
-      stars.push(
-        <Ionicons key={i} name="star" size={16} color="#fbbf24" />
-      );
+  const handleLogout = async () => {
+    try {
+      await AsyncStorage.removeItem('user');
+      await removeUser();
+      router.replace('/(auth)/login');
+    } catch (error) {
+      console.error('Error during logout:', error);
+      router.replace('/(auth)/login');
     }
-
-    if (hasHalfStar) {
-      stars.push(
-        <Ionicons key="half" name="star-half" size={16} color="#fbbf24" />
-      );
-    }
-
-    const emptyStars = 5 - Math.ceil(rating);
-    for (let i = 0; i < emptyStars; i++) {
-      stars.push(
-        <Ionicons key={`empty-${i}`} name="star-outline" size={16} color="#fbbf24" />
-      );
-    }
-
-    return stars;
   };
 
-  const renderDoctorCard = ({ item, index }) => (
-    <View style={[styles.doctorCard, item.isCurrentUser && styles.currentUserCard]}>
-      <View style={styles.rankContainer}>
-        <Text style={[styles.rankText, item.isCurrentUser && styles.currentUserRankText]}>
-          #{index + 1}
-        </Text>
-      </View>
-
-      <View style={styles.doctorInfo}>
-        <View style={styles.avatarContainer}>
-          <Text style={styles.avatarText}>
-            {item.name.split(' ').map(n => n[0]).join('')}
-          </Text>
-        </View>
-
-        <View style={styles.doctorDetails}>
-          <Text style={[styles.doctorName, item.isCurrentUser && styles.currentUserText]}>
-            {item.name} {item.isCurrentUser && '(أنت)'}
-          </Text>
-          <Text style={[styles.doctorSpecialty, item.isCurrentUser && styles.currentUserText]}>
-            {item.specialty}
-          </Text>
-          <Text style={[styles.doctorExperience, item.isCurrentUser && styles.currentUserText]}>
-            {item.experience} خبرة
-          </Text>
-        </View>
-      </View>
-
-      <View style={styles.ratingContainer}>
-        <View style={styles.starsContainer}>
-          {renderStars(item.rating)}
-        </View>
-        <Text style={[styles.ratingText, item.isCurrentUser && styles.currentUserText]}>
-          {item.rating}
-        </Text>
-        <Text style={[styles.reviewsText, item.isCurrentUser && styles.currentUserText]}>
-          ({item.reviews} تقييم)
-        </Text>
-      </View>
-    </View>
-  );
-
-  const sortedDoctors = [...doctors].sort((a, b) => b.rating - a.rating);
+  const settingsOptions = [
+    {
+      id: 1,
+      title: 'الملف الشخصي',
+      icon: 'person-outline',
+      action: () => Alert.alert('قريباً', 'هذه الميزة ستكون متاحة قريباً'),
+    },
+    {
+      id: 2,
+      title: 'الإشعارات',
+      icon: 'notifications-outline',
+      action: () => Alert.alert('قريباً', 'هذه الميزة ستكون متاحة قريباً'),
+    },
+    {
+      id: 3,
+      title: 'الأمان والخصوصية',
+      icon: 'shield-checkmark-outline',
+      action: () => Alert.alert('قريباً', 'هذه الميزة ستكون متاحة قريباً'),
+    },
+    {
+      id: 4,
+      title: 'المساعدة والدعم',
+      icon: 'help-circle-outline',
+      action: () => Alert.alert('قريباً', 'هذه الميزة ستكون متاحة قريباً'),
+    },
+    {
+      id: 5,
+      title: 'حول التطبيق',
+      icon: 'information-circle-outline',
+      action: () => Alert.alert('حول التطبيق', 'تطبيق التربية الصحية - نسخة 1.0.0'),
+    },
+  ];
 
   return (
     <SafeAreaView style={styles.container}>
@@ -162,26 +132,40 @@ export default function RatingScreen() {
           <Ionicons name="school" size={28} color="#14b8a6" />
           <Text style={styles.logoText}>التربية الصحية</Text>
         </View>
-        <TouchableOpacity style={styles.profileButton}>
-          <Ionicons name="person-circle" size={36} color="#14b8a6" />
-        </TouchableOpacity>
+        <View style={styles.userInfo}>
+          <Text style={styles.username}>{user?.username || 'الطبيب'}</Text>
+          <TouchableOpacity style={styles.profileButton} onPress={handleLogout}>
+            <Ionicons name="person-circle" size={28} color="#14b8a6" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* CONTENT */}
-      <View style={styles.content}>
-        <Text style={styles.title}>ترتيب الأطباء</Text>
-        <Text style={styles.subtitle}>
-          الترتيب حسب متوسط التقييمات من الآباء
-        </Text>
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        <Text style={styles.title}>الإعدادات</Text>
 
-        <FlatList
-          data={sortedDoctors}
-          renderItem={renderDoctorCard}
-          keyExtractor={(item) => item.id.toString()}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.doctorsList}
-        />
-      </View>
+        {settingsOptions.map((option) => (
+          <TouchableOpacity
+            key={option.id}
+            style={styles.settingItem}
+            onPress={option.action}
+          >
+            <View style={styles.settingLeft}>
+              <Ionicons name={option.icon} size={24} color="#6b7280" />
+              <Text style={styles.settingText}>{option.title}</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#9ca3af" />
+          </TouchableOpacity>
+        ))}
+
+        <TouchableOpacity
+          style={styles.logoutButton}
+          onPress={handleLogout}
+        >
+          <Ionicons name="log-out-outline" size={20} color="#ef4444" />
+          <Text style={styles.logoutText}>تسجيل الخروج</Text>
+        </TouchableOpacity>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -195,9 +179,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    paddingTop: 50,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#e5e7eb',
@@ -205,12 +188,23 @@ const styles = StyleSheet.create({
   logoContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 4,
   },
   logoText: {
-    fontSize: 18,
+    fontSize: 14,
     fontWeight: 'bold',
     color: '#1f2937',
+  },
+  userInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  username: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+    textAlign: 'right',
   },
   profileButton: {
     padding: 4,
@@ -225,109 +219,48 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#1f2937',
     textAlign: 'right',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#6b7280',
-    textAlign: 'right',
     marginBottom: 24,
   },
-  doctorsList: {
-    paddingBottom: 100,
-  },
-  doctorCard: {
+  settingItem: {
     backgroundColor: '#fff',
-    borderRadius: 16,
+    borderRadius: 12,
     padding: 16,
-    marginBottom: 12,
+    marginBottom: 8,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    shadowRadius: 4,
+    elevation: 1,
   },
-  currentUserCard: {
-    backgroundColor: '#ecfdf5',
-    borderWidth: 2,
-    borderColor: '#14b8a6',
-  },
-  rankContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#f3f4f6',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginLeft: 16,
-  },
-  rankText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#6b7280',
-  },
-  currentUserRankText: {
-    color: '#14b8a6',
-  },
-  doctorInfo: {
+  settingLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    flex: 1,
-    marginLeft: 12,
+    gap: 12,
   },
-  avatarContainer: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: '#14b8a6',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  avatarText: {
+  settingText: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  doctorDetails: {
-    flex: 1,
-    marginLeft: 12,
-    gap: 2,
-  },
-  doctorName: {
-    fontSize: 16,
-    fontWeight: 'bold',
     color: '#1f2937',
     textAlign: 'right',
   },
-  doctorSpecialty: {
-    fontSize: 13,
-    color: '#6b7280',
-    textAlign: 'right',
-  },
-  doctorExperience: {
-    fontSize: 12,
-    color: '#9ca3af',
-    textAlign: 'right',
-  },
-  currentUserText: {
-    color: '#14b8a6',
-  },
-  ratingContainer: {
-    alignItems: 'flex-end',
-    gap: 4,
-  },
-  starsContainer: {
+  logoutButton: {
+    backgroundColor: '#fef2f2',
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 32,
+    marginBottom: 100,
     flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderWidth: 1,
+    borderColor: '#fecaca',
   },
-  ratingText: {
+  logoutText: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: '#1f2937',
-  },
-  reviewsText: {
-    fontSize: 12,
-    color: '#6b7280',
+    color: '#ef4444',
+    fontWeight: '600',
   },
 });
